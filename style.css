@@ -1,0 +1,223 @@
+:root {
+    --wbc-dark: #022b23;
+    --wbc-forest: #024638;
+    --wbc-neon-yellow: #ffc600;
+    --wbc-neon-blue: #6ad1e3;
+    --wbc-neon-red: #e0004d;
+    --wbc-clay: #e5e1e6;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background: var(--wbc-dark);
+    color: var(--wbc-clay);
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 500px;
+    height: 100%;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.logo-area {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 2.5rem;
+    letter-spacing: 2px;
+}
+
+.wbc-text {
+    background: linear-gradient(to bottom, #fff, var(--wbc-neon-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.year-text {
+    color: var(--wbc-neon-yellow);
+    text-shadow: 0 0 15px rgba(255, 198, 0, 0.5);
+}
+
+h1 {
+    font-size: 0.9rem;
+    letter-spacing: 5px;
+    color: var(--wbc-neon-blue);
+    margin-top: -5px;
+    font-weight: 300;
+}
+
+.dashboard {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.stat-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--wbc-neon-blue);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 0.5rem;
+}
+
+.value-container {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.value-container.small {
+    font-size: 1.8rem;
+}
+
+.unit {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-family: 'Rajdhani', sans-serif;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-top: 1rem;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--wbc-neon-blue), var(--wbc-neon-yellow));
+    box-shadow: 0 0 10px var(--wbc-neon-blue);
+    transition: width 0.1s ease-out;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.action-area {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.glow-button {
+    background: transparent;
+    border: 2px solid var(--wbc-neon-yellow);
+    color: var(--wbc-neon-yellow);
+    padding: 1rem 2rem;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    box-shadow: 0 0 20px rgba(255, 198, 0, 0.1);
+}
+
+.glow-button:active {
+    background: var(--wbc-neon-yellow);
+    color: var(--wbc-dark);
+    box-shadow: 0 0 30px var(--wbc-neon-yellow);
+    transform: scale(0.95);
+}
+
+#status-msg {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Background Visuals */
+.visual-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.glow-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-20%, -30%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, var(--wbc-forest) 0%, transparent 70%);
+    filter: blur(40px);
+    opacity: 0.5;
+}
+
+.stadium-lines {
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    top: -50%;
+    left: -50%;
+    background-image: 
+        radial-gradient(circle at 50% 50%, transparent 40%, rgba(255, 255, 255, 0.02) 41%, transparent 42%),
+        linear-gradient(45deg, transparent 48%, rgba(255, 255, 255, 0.01) 50%, transparent 52%);
+    background-size: 100px 100px, 200px 200px;
+    animation: rotate 60s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Animation for swing hit */
+.hit-effect {
+    animation: flash 0.3s ease-out;
+}
+
+@keyframes flash {
+    0% { background-color: var(--wbc-neon-yellow); }
+    100% { background-color: var(--glass-bg); }
+}

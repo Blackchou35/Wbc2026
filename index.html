@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2026 WBC Swing Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo-area">
+                <span class="wbc-text">WBC</span>
+                <span class="year-text">2026</span>
+            </div>
+            <h1>SWING SENSOR</h1>
+        </header>
+
+        <main>
+            <div class="dashboard">
+                <div class="stat-card main-stat">
+                    <label>當前加速度</label>
+                    <div class="value-container">
+                        <span id="current-accel">0.0</span>
+                        <span class="unit">m/s²</span>
+                    </div>
+                    <div id="accel-bar" class="progress-bar">
+                        <div class="bar-fill"></div>
+                    </div>
+                </div>
+
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <label>最高紀錄</label>
+                        <div class="value-container small">
+                            <span id="max-accel">0.0</span>
+                            <span class="unit">m/s²</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <label>揮棒次數</label>
+                        <div class="value-container small">
+                            <span id="swing-count">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-area">
+                <button id="start-btn" class="glow-button">啟動感測器</button>
+                <p id="status-msg">請點擊上方按鈕開始授權感測器</p>
+            </div>
+        </main>
+
+        <div class="visual-bg">
+            <div class="glow-circle"></div>
+            <div class="stadium-lines"></div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
