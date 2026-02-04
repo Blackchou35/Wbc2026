@@ -93,18 +93,61 @@ class SwingApp {
     }
 
     async handleStart() {
+        this.logDebug("正在初始化音訊...");
+
         if (!this.audioCtx) {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
+
+        // iOS Hack: 嘗試播放一個空的 HTML5 Audio 以強制切換 Audio Session 模式
+        // 這通常能繞過實體靜音開關 (Mute Switch)
+        this.unlockIOSAudio();
 
         if (this.audioCtx.state === 'suspended') {
             await this.audioCtx.resume();
         }
 
+        this.logDebug(`AudioContext: ${this.audioCtx.state}`);
+
+        // 播放測試音效 (Beep) 確認聲音路徑
+        this.playTestTone();
+
         const success = await this.loadMusic();
         if (success) {
             this.startGame();
         }
+    }
+
+    unlockIOSAudio() {
+        // 建立一個極短的靜音音檔 (base64 of a simple wav)
+        const silentAudio = new Audio("data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAAAAA==");
+        silentAudio.volume = 0.1;
+        silentAudio.play().then(() => {
+            this.logDebug("iOS Audio Session Unlocked");
+        }).catch(e => {
+            this.logDebug("iOS Unlock Failed: " + e.message);
+        });
+    }
+
+    playTestTone() {
+        try {
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            osc.frequency.value = 600;
+            gain.gain.value = 0.1;
+            osc.connect(gain).connect(this.audioCtx.destination);
+            osc.start();
+            osc.stop(this.audioCtx.currentTime + 0.1);
+            this.logDebug("測試音效已發送");
+        } catch (e) {
+            this.logDebug("測試音效失敗: " + e.message);
+        }
+    }
+
+    logDebug(msg) {
+        console.log(msg);
+        const el = document.getElementById('debug-log');
+        if (el) el.innerText = msg;
     }
 
     startGame() {

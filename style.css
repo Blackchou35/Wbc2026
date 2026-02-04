@@ -375,3 +375,20 @@ h1 {
     color: rgba(255, 255, 255, 0.2);
     pointer-events: none;
 }
+
+.warning-box {
+    margin: 10px 0;
+    color: #ff4d4d;
+    font-size: 0.9rem;
+    background: rgba(255, 0, 0, 0.1);
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ff4d4d;
+}
+
+.debug-text {
+    font-size: 0.7rem;
+    color: #aaa;
+    margin-top: 5px;
+    font-family: monospace;
+}
