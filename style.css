@@ -22,20 +22,27 @@ body {
     font-family: 'Rajdhani', sans-serif;
     overflow: hidden;
     height: 100vh;
+    width: 100vw;
     display: flex;
     justify-content: center;
     align-items: center;
+    /* 防止 iPhone 橡皮筋回彈與手勢縮放 */
+    overscroll-behavior: none;
+    touch-action: none;
+    position: fixed;
 }
 
 .app-container {
     width: 100%;
     max-width: 500px;
-    height: 100%;
+    height: 100dvh;
+    /* 使用動態高度防止 address bar 遮擋 */
     padding: 2rem;
     display: flex;
     flex-direction: column;
     position: relative;
     z-index: 10;
+    overflow: hidden;
 }
 
 header {
@@ -200,7 +207,7 @@ h1 {
     height: 200%;
     top: -50%;
     left: -50%;
-    background-image: 
+    background-image:
         radial-gradient(circle at 50% 50%, transparent 40%, rgba(255, 255, 255, 0.02) 41%, transparent 42%),
         linear-gradient(45deg, transparent 48%, rgba(255, 255, 255, 0.01) 50%, transparent 52%);
     background-size: 100px 100px, 200px 200px;
@@ -208,8 +215,13 @@ h1 {
 }
 
 @keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Animation for swing hit */
@@ -218,6 +230,11 @@ h1 {
 }
 
 @keyframes flash {
-    0% { background-color: var(--wbc-neon-yellow); }
-    100% { background-color: var(--glass-bg); }
+    0% {
+        background-color: var(--wbc-neon-yellow);
+    }
+
+    100% {
+        background-color: var(--glass-bg);
+    }
 }
