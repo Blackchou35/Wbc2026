@@ -1,192 +1,209 @@
 /**
- * 2026 WBC Swing Sensor - Core Logic
+ * 2026 WBC Cheer Rhythm - Tap Version
+ * Loads J3QJe2J8kB8.mp3 automatically from the repo
  */
 
 class SwingApp {
     constructor() {
-        this.currentAccel = 0;
-        this.maxAccel = 0;
-        this.swingCount = 0;
-        this.isMonitoring = false;
-        this.threshold = 25.0; // m/s²
-        this.coolDown = false; // 防止連續觸發
+        this.score = 0;
+        this.swingCount = 0; // 現在代表點擊次數
+        this.combo = 0;
+        this.isGameStarted = false;
+        this.isMusicLoaded = false;
+
+        // Rhythm Logic
+        this.beats = [];
+        this.musicStartTime = 0;
+        this.nextBeatIndex = 0;
+        this.audioBuffer = null;
+        this.audioSource = null;
+        this.musicUrl = 'J3QJe2J8kB8.mp3';
 
         // DOM Elements
         this.ui = {
-            currentAccel: document.getElementById('current-accel'),
-            maxAccel: document.getElementById('max-accel'),
+            score: document.getElementById('max-accel'),
             swingCount: document.getElementById('swing-count'),
+            combo: document.getElementById('combo-display'),
+            judgment: document.getElementById('judgment-text'),
             startBtn: document.getElementById('start-btn'),
             statusMsg: document.getElementById('status-msg'),
-            accelBar: document.querySelector('.bar-fill'),
-            mainStat: document.querySelector('.main-stat')
+            mainStat: document.querySelector('.main-stat'),
+            beatRing: document.getElementById('beat-ring'),
+            gameArea: document.querySelector('.rhythm-game-area')
         };
 
-        // Audio setup (using direct synthesis for "bat hit" to ensure it works offline/fast)
         this.audioCtx = null;
-
-        this.initEventListeners();
+        this.init();
     }
 
-    initEventListeners() {
+    init() {
         this.ui.startBtn.addEventListener('click', () => this.handleStart());
+        // 監聽點擊與觸控
+        this.ui.gameArea.addEventListener('mousedown', (e) => this.handleTap(e));
+        this.ui.gameArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.handleTap(e);
+        });
+    }
+
+    async loadMusic() {
+        this.ui.statusMsg.innerText = "音樂載入中...";
+        try {
+            const response = await fetch(this.musicUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            this.audioBuffer = await this.audioCtx.decodeAudioData(arrayBuffer);
+            this.analyzeBeats();
+            this.isMusicLoaded = true;
+            this.ui.statusMsg.innerText = "音樂準備就緒！";
+            return true;
+        } catch (error) {
+            console.error(error);
+            this.ui.statusMsg.innerText = "載入音樂失敗，請確認檔案在 GitHub 上。";
+            return false;
+        }
+    }
+
+    analyzeBeats() {
+        const sampleRate = this.audioBuffer.sampleRate;
+        const channelData = this.audioBuffer.getChannelData(0);
+
+        this.beats = [];
+        const frameSize = 1024;
+        const energyBuffer = [];
+
+        for (let i = 0; i < channelData.length; i += frameSize) {
+            let sum = 0;
+            for (let j = 0; j < frameSize && (i + j) < channelData.length; j++) {
+                sum += channelData[i + j] * channelData[i + j];
+            }
+            energyBuffer.push(Math.sqrt(sum / frameSize));
+        }
+
+        const avgEnergy = energyBuffer.reduce((a, b) => a + b, 0) / energyBuffer.length;
+        const threshold = avgEnergy * 1.6; // 稍微提高閾值以抓取更精確的重音拍
+
+        for (let i = 1; i < energyBuffer.length - 1; i++) {
+            if (energyBuffer[i] > threshold && energyBuffer[i] > energyBuffer[i - 1] && energyBuffer[i] > energyBuffer[i + 1]) {
+                const timeMs = (i * frameSize / sampleRate) * 1000;
+                if (this.beats.length === 0 || (timeMs - this.beats[this.beats.length - 1] > 320)) {
+                    this.beats.push(timeMs);
+                }
+            }
+        }
     }
 
     async handleStart() {
-        // Initialize Audio Context on user gesture
         if (!this.audioCtx) {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
-        // 關鍵：在使用者點擊時明確 Resume AudioContext
         if (this.audioCtx.state === 'suspended') {
             await this.audioCtx.resume();
         }
 
-        // 先播放一個靜音音效預熱 (iOS 必要動作)
-        this.playSilentBuffer();
-
-        try {
-            // Check for iOS Permission requirement
-            if (window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
-                const permission = await DeviceMotionEvent.requestPermission();
-                if (permission === 'granted') {
-                    this.startMonitoring();
-                } else {
-                    this.ui.statusMsg.innerText = "權限未核准。請重新整理網頁並點擊允許。";
-                    this.ui.statusMsg.style.color = '#ff4d4d';
-                }
-            } else if (window.DeviceMotionEvent) {
-                // Android or non-iOS
-                this.startMonitoring();
-            } else {
-                this.ui.statusMsg.innerText = "您的瀏覽器不支援加速度感測器。";
-            }
-        } catch (error) {
-            console.error(error);
-            this.ui.statusMsg.innerText = "初始化失敗：" + error.message;
+        const success = await this.loadMusic();
+        if (success) {
+            this.startGame();
         }
     }
 
-    playSilentBuffer() {
-        if (!this.audioCtx) return;
-        const buffer = this.audioCtx.createBuffer(1, 1, 22050);
-        const node = this.audioCtx.createBufferSource();
-        node.buffer = buffer;
-        node.connect(this.audioCtx.destination);
-        node.start(0);
-    }
-
-    startMonitoring() {
-        if (this.isMonitoring) return;
-
-        this.isMonitoring = true;
+    startGame() {
+        if (this.isGameStarted) return;
+        this.isGameStarted = true;
         this.ui.startBtn.style.display = 'none';
-        this.ui.statusMsg.innerText = "正在監測感測器... 請嘗試揮棒！";
 
-        window.addEventListener('devicemotion', (event) => {
-            const acc = event.accelerationIncludingGravity;
-            if (!acc) return;
+        // 播放音樂
+        this.audioSource = this.audioCtx.createBufferSource();
+        this.audioSource.buffer = this.audioBuffer;
+        this.audioSource.connect(this.audioCtx.destination);
 
-            // 計算向量總和: sqrt(x^2 + y^2 + z^2)
-            const x = acc.x || 0;
-            const y = acc.y || 0;
-            const z = acc.z || 0;
-            const magnitude = Math.sqrt(x * x + y * y + z * z);
+        this.musicStartTime = performance.now();
+        this.audioSource.start(0);
 
-            this.updateUI(magnitude);
-            this.checkSwing(magnitude);
-        });
+        this.gameLoop();
     }
 
-    updateUI(magnitude) {
-        this.currentAccel = magnitude.toFixed(1);
-        this.ui.currentAccel.innerText = this.currentAccel;
+    gameLoop() {
+        if (!this.isGameStarted) return;
+        const elpased = performance.now() - this.musicStartTime;
 
-        // Update bar (max visual 50 m/s2)
-        const percentage = Math.min((magnitude / 50) * 100, 100);
-        this.ui.accelBar.style.width = percentage + '%';
-
-        if (magnitude > this.maxAccel) {
-            this.maxAccel = magnitude;
-            this.ui.maxAccel.innerText = magnitude.toFixed(1);
+        if (this.nextBeatIndex < this.beats.length) {
+            const nextBeat = this.beats[this.nextBeatIndex];
+            if (elpased > nextBeat - 1000) {
+                this.triggerRing();
+                this.nextBeatIndex++;
+            }
         }
+        requestAnimationFrame(() => this.gameLoop());
     }
 
-    checkSwing(magnitude) {
-        if (magnitude > this.threshold && !this.coolDown) {
-            this.triggerHit();
-        }
+    triggerRing() {
+        this.ui.beatRing.classList.remove('ring-anim');
+        void this.ui.beatRing.offsetWidth;
+        this.ui.beatRing.classList.add('ring-anim');
     }
 
-    triggerHit() {
-        this.coolDown = true;
+    handleTap(e) {
+        if (!this.isGameStarted) return;
+
         this.swingCount++;
         this.ui.swingCount.innerText = this.swingCount;
 
-        // 1. Vibrate (Note: iOS Safari 不支援此 Web API)
-        if (navigator.vibrate) {
-            navigator.vibrate([150]);
-        }
+        const tapTime = performance.now() - this.musicStartTime;
 
-        // 2. Play Sound (Synthesized "Crack of the bat")
-        this.playHitSound();
+        let closestBeat = this.beats.reduce((prev, curr) => {
+            return (Math.abs(curr - tapTime) < Math.abs(prev - tapTime) ? curr : prev);
+        });
 
-        // 3. Visual Feedback (強烈閃爍)
-        document.body.style.backgroundColor = 'var(--wbc-neon-yellow)';
-        this.ui.mainStat.classList.add('hit-effect');
-
-        setTimeout(() => {
-            document.body.style.backgroundColor = 'var(--wbc-dark)';
-            this.ui.mainStat.classList.remove('hit-effect');
-        }, 200);
-
-        this.ui.statusMsg.innerText = "擊出！力道：" + this.currentAccel;
-
-        // Cool down for 0.8 second
-        setTimeout(() => {
-            this.coolDown = false;
-        }, 800);
+        const diff = Math.abs(tapTime - closestBeat);
+        this.judge(diff);
     }
 
-    playHitSound() {
-        if (!this.audioCtx) return;
+    judge(diff) {
+        let result = "";
 
-        const oscillator = this.audioCtx.createOscillator();
-        const gainNode = this.audioCtx.createGain();
-
-        oscillator.type = 'sine'; // 更清脆的聲音
-        oscillator.frequency.setValueAtTime(800, this.audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(100, this.audioCtx.currentTime + 0.2);
-
-        gainNode.gain.setValueAtTime(0.8, this.audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.4);
-
-        const noiseBuffer = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate * 0.1, this.audioCtx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < noiseBuffer.length; i++) {
-            output[i] = Math.random() * 2 - 1;
+        // 點擊模式因為不需要物理揮動時間，縮小判定區間增加挑戰性
+        if (diff < 150) {
+            result = "PERFECT";
+            this.combo++;
+            this.score += 1000 * (1 + (this.combo * 0.1));
+            this.ui.judgment.className = "judgment-text judgment-perfect";
+            if (navigator.vibrate) navigator.vibrate([20]);
+        } else if (diff < 350) {
+            result = "GOOD";
+            this.combo++;
+            this.score += 500;
+            this.ui.judgment.className = "judgment-text judgment-good";
+        } else {
+            result = "MISS";
+            this.combo = 0;
+            this.ui.judgment.className = "judgment-text judgment-miss";
         }
-        const noiseSource = this.audioCtx.createBufferSource();
-        noiseSource.buffer = noiseBuffer;
-        const noiseGain = this.audioCtx.createGain();
-        noiseGain.gain.setValueAtTime(0.6, this.audioCtx.currentTime);
-        noiseGain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.1);
 
-        oscillator.connect(gainNode);
-        noiseSource.connect(noiseGain);
+        this.ui.judgment.innerText = result;
+        this.ui.combo.innerText = `COMBO ${this.combo}`;
+        this.ui.score.innerText = Math.floor(this.score);
 
-        gainNode.connect(this.audioCtx.destination);
-        noiseGain.connect(this.audioCtx.destination);
+        // 視覺特效
+        this.ui.mainStat.classList.add('hit-effect');
+        setTimeout(() => this.ui.mainStat.classList.remove('hit-effect'), 100);
 
-        oscillator.start();
-        noiseSource.start();
-        oscillator.stop(this.audioCtx.currentTime + 0.4);
-        noiseSource.stop(this.audioCtx.currentTime + 0.1);
+        this.playHitSound(result === "PERFECT" ? 880 : 440);
+    }
+
+    playHitSound(freq) {
+        if (!this.audioCtx) return;
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, this.audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, this.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.15);
+        osc.connect(gain).connect(this.audioCtx.destination);
+        osc.start();
+        osc.stop(this.audioCtx.currentTime + 0.15);
     }
 }
 
-// Start the app
-window.addEventListener('DOMContentLoaded', () => {
-    window.app = new SwingApp();
-});
+window.addEventListener('DOMContentLoaded', () => { window.app = new SwingApp(); });

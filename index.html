@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,8 +8,11 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <div class="app-container">
         <header>
@@ -20,9 +24,20 @@
         </header>
 
         <main>
+            <div class="rhythm-game-area">
+                <div id="combo-display" class="combo-text">COMBO 0</div>
+                <div class="rhythm-center">
+                    <div id="ring-container">
+                        <div class="target-circle"></div>
+                        <div id="beat-ring" class="beat-ring"></div>
+                    </div>
+                </div>
+                <div id="judgment-text" class="judgment-text">GET READY!</div>
+            </div>
+
             <div class="dashboard">
                 <div class="stat-card main-stat">
-                    <label>當前加速度</label>
+                    <label>當前力道</label>
                     <div class="value-container">
                         <span id="current-accel">0.0</span>
                         <span class="unit">m/s²</span>
@@ -34,10 +49,9 @@
 
                 <div class="stat-grid">
                     <div class="stat-card">
-                        <label>最高紀錄</label>
+                        <label>總積分</label>
                         <div class="value-container small">
-                            <span id="max-accel">0.0</span>
-                            <span class="unit">m/s²</span>
+                            <span id="max-accel">0</span>
                         </div>
                     </div>
                     <div class="stat-card">
@@ -50,8 +64,9 @@
             </div>
 
             <div class="action-area">
-                <button id="start-btn" class="glow-button">啟動感測器</button>
-                <p id="status-msg">請點擊上方按鈕開始授權感測器</p>
+                <button id="start-btn" class="glow-button">載入音樂並開始</button>
+                <p id="status-msg">應援曲：J3QJe2J8kB8.mp3 已就緒</p>
+                <p class="hint">當外圈與黃圈重合時點擊螢幕！</p>
             </div>
         </main>
 
@@ -62,4 +77,5 @@
     </div>
     <script src="app.js"></script>
 </body>
+
 </html>
