@@ -26,12 +26,8 @@
         <main>
             <div class="rhythm-game-area">
                 <div id="combo-display" class="combo-text">COMBO 0</div>
-                <div class="rhythm-center">
-                    <div id="ring-container">
-                        <div class="target-circle"></div>
-                        <div id="beat-ring" class="beat-ring"></div>
-                    </div>
-                </div>
+                <div class="target-circle"></div>
+                <!-- spawnNote will append .beat-note here -->
                 <div id="judgment-text" class="judgment-text">GET READY!</div>
             </div>
 
@@ -64,6 +60,13 @@
             </div>
 
             <div class="action-area">
+                <div class="mode-toggle">
+                    <label class="switch">
+                        <input type="checkbox" id="bt-mode-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="mode-label">藍牙/簡易模式 (延遲校正)</span>
+                </div>
                 <button id="start-btn" class="glow-button">載入音樂並開始</button>
                 <div class="warning-box">⚠️ iPhone 請務必關閉靜音開關 (Mute Switch) 否則會沒聲音！</div>
                 <p id="status-msg">應援曲：J3QJe2J8kB8.mp3 已就緒</p>

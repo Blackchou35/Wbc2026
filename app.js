@@ -25,7 +25,7 @@ class SwingApp {
         this.globalOffset = 0.0;
         this.lookahead = 0.1;
         this.scheduleAheadTime = 0.2;
-        this.visualDelay = 1.0; // Ring appears 1s before beat
+        this.visualDelay = 1.5; // Scroll Speed: Note must spawn 1.5s before hitting target
 
         // DOM Elements
         this.ui = {
@@ -36,7 +36,6 @@ class SwingApp {
             startBtn: document.getElementById('start-btn'),
             statusMsg: document.getElementById('status-msg'),
             mainStat: document.querySelector('.main-stat'),
-            beatRing: document.getElementById('beat-ring'),
             gameArea: document.querySelector('.rhythm-game-area')
         };
 
@@ -108,6 +107,16 @@ class SwingApp {
 
     async handleStart() {
         this.logDebug("初始化核心...");
+
+        // 檢查使用者是否開啟了「藍牙/簡易模式」
+        const isBtMode = document.getElementById('bt-mode-toggle').checked;
+        if (isBtMode) {
+            this.globalOffset = 0.20; // 補償藍牙延遲 (約 200ms)
+            this.logDebug("模式: 藍牙/簡易 (Offset +0.2s)");
+        } else {
+            this.globalOffset = 0.0;
+        }
+
         if (!this.audioCtx) {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -166,17 +175,18 @@ class SwingApp {
     scheduleVisual(visualTime) {
         const timeUntilTrigger = (this.audioStartTime + visualTime) - this.audioCtx.currentTime;
         if (timeUntilTrigger > 0) {
-            setTimeout(() => this.triggerRing(), timeUntilTrigger * 1000);
+            setTimeout(() => this.spawnNote(), timeUntilTrigger * 1000);
         } else {
-            this.triggerRing();
+            this.spawnNote();
         }
     }
 
-    triggerRing() {
-        const ring = document.createElement('div');
-        ring.classList.add('beat-ring', 'ring-anim');
-        document.getElementById('ring-container').appendChild(ring);
-        setTimeout(() => ring.remove(), 1000);
+    // spawnNote is now used instead of triggerRing
+    spawnNote() {
+        const note = document.createElement('div');
+        note.classList.add('beat-note', 'note-anim');
+        this.ui.gameArea.appendChild(note);
+        setTimeout(() => note.remove(), 2000);
     }
 
     handleTap(e) {
@@ -200,9 +210,12 @@ class SwingApp {
     }
 
     judge(diffSec) {
-        // Precise Windows (seconds)
-        const PERFECT = 0.08; // 80ms
-        const GOOD = 0.15;   // 150ms
+        // Dynamic Difficulty based on Mode
+        const isBtMode = document.getElementById('bt-mode-toggle').checked;
+
+        // Easy Mode (Bluetooth): Very relaxed windows
+        const PERFECT = isBtMode ? 0.15 : 0.08; // 150ms vs 80ms
+        const GOOD = isBtMode ? 0.30 : 0.15;    // 300ms vs 150ms
 
         let result = "";
 
@@ -213,7 +226,6 @@ class SwingApp {
             this.ui.judgment.className = "judgment-text judgment-perfect";
             if (navigator.vibrate) navigator.vibrate([20]);
 
-            // Full screen flash for Juice
             this.triggerFlash();
 
         } else if (diffSec < GOOD) {
