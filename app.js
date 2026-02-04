@@ -1,23 +1,31 @@
 /**
- * 2026 WBC Cheer Rhythm - Tap Version
- * Loads J3QJe2J8kB8.mp3 automatically from the repo
+ * 2026 WBC Cheer Rhythm - Expert Logic v2.1
+ * - AudioContext Clock (No drift)
+ * - Lookahead Scheduler
+ * - Mobile Optimize Interactions
  */
 
 class SwingApp {
     constructor() {
         this.score = 0;
-        this.swingCount = 0; // 現在代表點擊次數
+        this.swingCount = 0;
         this.combo = 0;
         this.isGameStarted = false;
         this.isMusicLoaded = false;
 
-        // Rhythm Logic
+        // Rhythm Logic (Expert Mode)
         this.beats = [];
-        this.musicStartTime = 0;
+        this.audioStartTime = 0;
         this.nextBeatIndex = 0;
         this.audioBuffer = null;
         this.audioSource = null;
         this.musicUrl = 'J3QJe2J8kB8.mp3';
+
+        // Calibration
+        this.globalOffset = 0.0;
+        this.lookahead = 0.1;
+        this.scheduleAheadTime = 0.2;
+        this.visualDelay = 1.0; // Ring appears 1s before beat
 
         // DOM Elements
         this.ui = {
@@ -38,12 +46,19 @@ class SwingApp {
 
     init() {
         this.ui.startBtn.addEventListener('click', () => this.handleStart());
-        // 監聽點擊與觸控
-        this.ui.gameArea.addEventListener('mousedown', (e) => this.handleTap(e));
-        this.ui.gameArea.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+
+        // Input Handling: Expert Mobile Optimization
+        // Use 'touchstart' for 0ms latency on iOS/Android
+        const handleInput = (e) => {
+            // Prevent default zooming/scrolling behavior on the game area
+            if (e.type === 'touchstart') e.preventDefault();
             this.handleTap(e);
-        });
+        };
+
+        // Add listener to the specific game area
+        // Note: In style.css we will expand this area to be easier to hit
+        this.ui.gameArea.addEventListener('touchstart', handleInput, { passive: false });
+        this.ui.gameArea.addEventListener('mousedown', handleInput);
     }
 
     async loadMusic() {
@@ -66,7 +81,6 @@ class SwingApp {
     analyzeBeats() {
         const sampleRate = this.audioBuffer.sampleRate;
         const channelData = this.audioBuffer.getChannelData(0);
-
         this.beats = [];
         const frameSize = 1024;
         const energyBuffer = [];
@@ -80,37 +94,29 @@ class SwingApp {
         }
 
         const avgEnergy = energyBuffer.reduce((a, b) => a + b, 0) / energyBuffer.length;
-        const threshold = avgEnergy * 1.6; // 稍微提高閾值以抓取更精確的重音拍
+        const threshold = avgEnergy * 1.5;
 
         for (let i = 1; i < energyBuffer.length - 1; i++) {
             if (energyBuffer[i] > threshold && energyBuffer[i] > energyBuffer[i - 1] && energyBuffer[i] > energyBuffer[i + 1]) {
-                const timeMs = (i * frameSize / sampleRate) * 1000;
-                if (this.beats.length === 0 || (timeMs - this.beats[this.beats.length - 1] > 320)) {
-                    this.beats.push(timeMs);
+                const timeSec = (i * frameSize / sampleRate);
+                if (this.beats.length === 0 || (timeSec - this.beats[this.beats.length - 1] > 0.35)) {
+                    this.beats.push(timeSec);
                 }
             }
         }
     }
 
     async handleStart() {
-        this.logDebug("正在初始化音訊...");
-
+        this.logDebug("初始化核心...");
         if (!this.audioCtx) {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
-        // iOS Hack: 嘗試播放一個空的 HTML5 Audio 以強制切換 Audio Session 模式
-        // 這通常能繞過實體靜音開關 (Mute Switch)
         this.unlockIOSAudio();
 
         if (this.audioCtx.state === 'suspended') {
             await this.audioCtx.resume();
         }
-
-        this.logDebug(`AudioContext: ${this.audioCtx.state}`);
-
-        // 播放測試音效 (Beep) 確認聲音路徑
-        this.playTestTone();
 
         const success = await this.loadMusic();
         if (success) {
@@ -119,35 +125,10 @@ class SwingApp {
     }
 
     unlockIOSAudio() {
-        // 建立一個極短的靜音音檔 (base64 of a simple wav)
+        // Silent Audio Hack for iOS
         const silentAudio = new Audio("data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhAAAAAA==");
         silentAudio.volume = 0.1;
-        silentAudio.play().then(() => {
-            this.logDebug("iOS Audio Session Unlocked");
-        }).catch(e => {
-            this.logDebug("iOS Unlock Failed: " + e.message);
-        });
-    }
-
-    playTestTone() {
-        try {
-            const osc = this.audioCtx.createOscillator();
-            const gain = this.audioCtx.createGain();
-            osc.frequency.value = 600;
-            gain.gain.value = 0.1;
-            osc.connect(gain).connect(this.audioCtx.destination);
-            osc.start();
-            osc.stop(this.audioCtx.currentTime + 0.1);
-            this.logDebug("測試音效已發送");
-        } catch (e) {
-            this.logDebug("測試音效失敗: " + e.message);
-        }
-    }
-
-    logDebug(msg) {
-        console.log(msg);
-        const el = document.getElementById('debug-log');
-        if (el) el.innerText = msg;
+        silentAudio.play().catch(e => console.log("Unlock info: " + e.message));
     }
 
     startGame() {
@@ -155,35 +136,47 @@ class SwingApp {
         this.isGameStarted = true;
         this.ui.startBtn.style.display = 'none';
 
-        // 播放音樂
         this.audioSource = this.audioCtx.createBufferSource();
         this.audioSource.buffer = this.audioBuffer;
         this.audioSource.connect(this.audioCtx.destination);
 
-        this.musicStartTime = performance.now();
-        this.audioSource.start(0);
+        // Audio Clock Start
+        this.audioStartTime = this.audioCtx.currentTime + 0.1;
+        this.audioSource.start(this.audioStartTime);
 
-        this.gameLoop();
+        this.scheduler();
     }
 
-    gameLoop() {
-        if (!this.isGameStarted) return;
-        const elpased = performance.now() - this.musicStartTime;
+    scheduler() {
+        // Lookahead timing logic
+        while (this.nextBeatIndex < this.beats.length &&
+            this.beats[this.nextBeatIndex] < this.audioCtx.currentTime - this.audioStartTime + this.scheduleAheadTime + this.visualDelay) {
 
-        if (this.nextBeatIndex < this.beats.length) {
-            const nextBeat = this.beats[this.nextBeatIndex];
-            if (elpased > nextBeat - 1000) {
-                this.triggerRing();
-                this.nextBeatIndex++;
-            }
+            const beatTime = this.beats[this.nextBeatIndex];
+            const visualTime = beatTime - this.visualDelay;
+            this.scheduleVisual(visualTime);
+            this.nextBeatIndex++;
         }
-        requestAnimationFrame(() => this.gameLoop());
+
+        if (this.isGameStarted) {
+            setTimeout(() => this.scheduler(), this.lookahead * 1000);
+        }
+    }
+
+    scheduleVisual(visualTime) {
+        const timeUntilTrigger = (this.audioStartTime + visualTime) - this.audioCtx.currentTime;
+        if (timeUntilTrigger > 0) {
+            setTimeout(() => this.triggerRing(), timeUntilTrigger * 1000);
+        } else {
+            this.triggerRing();
+        }
     }
 
     triggerRing() {
-        this.ui.beatRing.classList.remove('ring-anim');
-        void this.ui.beatRing.offsetWidth;
-        this.ui.beatRing.classList.add('ring-anim');
+        const ring = document.createElement('div');
+        ring.classList.add('beat-ring', 'ring-anim');
+        document.getElementById('ring-container').appendChild(ring);
+        setTimeout(() => ring.remove(), 1000);
     }
 
     handleTap(e) {
@@ -192,27 +185,38 @@ class SwingApp {
         this.swingCount++;
         this.ui.swingCount.innerText = this.swingCount;
 
-        const tapTime = performance.now() - this.musicStartTime;
+        // Current Audio Time for Judgment
+        const currentTime = this.audioCtx.currentTime - this.audioStartTime;
+
+        // Find closest beat
+        if (this.beats.length === 0) return;
 
         let closestBeat = this.beats.reduce((prev, curr) => {
-            return (Math.abs(curr - tapTime) < Math.abs(prev - tapTime) ? curr : prev);
+            return (Math.abs(curr - currentTime) < Math.abs(prev - currentTime) ? curr : prev);
         });
 
-        const diff = Math.abs(tapTime - closestBeat);
+        const diff = Math.abs(currentTime - closestBeat - this.globalOffset);
         this.judge(diff);
     }
 
-    judge(diff) {
+    judge(diffSec) {
+        // Precise Windows (seconds)
+        const PERFECT = 0.08; // 80ms
+        const GOOD = 0.15;   // 150ms
+
         let result = "";
 
-        // 點擊模式因為不需要物理揮動時間，縮小判定區間增加挑戰性
-        if (diff < 150) {
+        if (diffSec < PERFECT) {
             result = "PERFECT";
             this.combo++;
             this.score += 1000 * (1 + (this.combo * 0.1));
             this.ui.judgment.className = "judgment-text judgment-perfect";
             if (navigator.vibrate) navigator.vibrate([20]);
-        } else if (diff < 350) {
+
+            // Full screen flash for Juice
+            this.triggerFlash();
+
+        } else if (diffSec < GOOD) {
             result = "GOOD";
             this.combo++;
             this.score += 500;
@@ -227,25 +231,36 @@ class SwingApp {
         this.ui.combo.innerText = `COMBO ${this.combo}`;
         this.ui.score.innerText = Math.floor(this.score);
 
-        // 視覺特效
-        this.ui.mainStat.classList.add('hit-effect');
-        setTimeout(() => this.ui.mainStat.classList.remove('hit-effect'), 100);
-
         this.playHitSound(result === "PERFECT" ? 880 : 440);
+    }
+
+    triggerFlash() {
+        const flash = document.createElement('div');
+        flash.className = 'screen-flash';
+        document.body.appendChild(flash);
+        requestAnimationFrame(() => {
+            flash.style.opacity = '0';
+        });
+        setTimeout(() => flash.remove(), 200);
     }
 
     playHitSound(freq) {
         if (!this.audioCtx) return;
+        const t = this.audioCtx.currentTime;
         const osc = this.audioCtx.createOscillator();
         const gain = this.audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, this.audioCtx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.3, this.audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.15);
+        osc.frequency.setValueAtTime(freq, t);
+        osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.linearRampToValueAtTime(0, t + 0.1);
         osc.connect(gain).connect(this.audioCtx.destination);
-        osc.start();
-        osc.stop(this.audioCtx.currentTime + 0.15);
+        osc.start(t);
+        osc.stop(t + 0.15);
+    }
+
+    logDebug(msg) {
+        const el = document.getElementById('debug-log');
+        if (el) el.innerText = msg;
     }
 }
 
